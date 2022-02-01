@@ -10,7 +10,7 @@ Target Language : MIPS
 
 ```
 $ make
-$ ./bin/lexer ./tests/test1.c
+$ ./bin/lexer -i ./tests/test1.c
 
 ```
 
@@ -27,13 +27,13 @@ $ make clean
 ├── README.md
 ├── src
 │   ├── lex.l
-│   └── y.tab.h
+│   └── def.h
 └── tests
-    ├── test1.c
-    ├── test2.c
-    ├── test3.c
-    ├── test4.c
-    └── test5.c
+    ├── test1.py
+    ├── test2.py
+    ├── test3.py
+    ├── test4.py
+    └── test5.py
 
 
 
