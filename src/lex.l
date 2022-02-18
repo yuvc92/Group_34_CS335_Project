@@ -55,7 +55,7 @@ L?'(\\.|[^\\'])+'	{ f();printf("CONSTANT      "); return(CONSTANT); }
 {D}+{E}{FS}?		{ f();printf("CONSTANT      "); return(CONSTANT); }
 {D}*"."{D}+({E})?{FS}?	{ f();printf("CONSTANT      "); return(CONSTANT); }
 {D}+"."{D}*({E})?{FS}?	{ f();printf("CONSTANT      "); return(CONSTANT); }
-L?\"(\\.|[^\\"])*\"	{ f();printf("CONSTANT		"); return(CONSTANT); }
+L?\"(\\.|[^\\"])*\"	{ f();printf("STRING_LITERAL	"); return(STRING_LITERAL); }
 
 ">>="			{ f(); printf("RIGHT_ASSIGN	 "); return(RIGHT_ASSIGN);}
 "<<="			{ f(); printf("LEFT_ASSIGN   "); return(LEFT_ASSIGN);}
