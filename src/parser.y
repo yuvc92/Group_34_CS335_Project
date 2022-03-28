@@ -17,622 +17,540 @@ int yylex();
 
 
 
-file: [statements] ENDMARKER 
-interactive: statement_newline 
-eval: expressions NEWLINE* ENDMARKER 
-func_type: '(' [type_expressions] ')' '->' expression NEWLINE* ENDMARKER 
-fstring: star_expressions
-
-
-type_expressions:
-    | ','.expression+ ',' '*' expression ',' '**' expression 
-    | ','.expression+ ',' '*' expression 
-    | ','.expression+ ',' '**' expression 
-    | '*' expression ',' '**' expression 
-    | '*' expression 
-    | '**' expression 
-    | ','.expression+ 
-
-statements: statement+ 
-statement: compound_stmt  | simple_stmts 
-statement_newline:
-    | compound_stmt NEWLINE 
-    | simple_stmts
-    | NEWLINE 
-    | ENDMARKER 
-simple_stmts:
-    | simple_stmt !';' NEWLINE  # Not needed, there for speedup
-    | ';'.simple_stmt+ [';'] NEWLINE 
-# NOTE: assignment MUST precede expression, else parsing a simple assignment
-# will throw a SyntaxError.
-simple_stmt:
-    | assignment
-    | star_expressions 
-    | return_stmt
-    | import_stmt
-    | raise_stmt
-    | 'pass' 
-    | del_stmt
-    | yield_stmt
-    | assert_stmt
-    | 'break' 
-    | 'continue' 
-    | global_stmt
-    | nonlocal_stmt
-compound_stmt:
-    | function_def
-    | if_stmt
-    | class_def
-    | with_stmt
-    | for_stmt
-    | try_stmt
-    | while_stmt
-    | match_stmt
-
-# NOTE: annotated_rhs may start with 'yield'; yield_expr must start with 'yield'
-assignment:
-    | NAME ':' expression ['=' annotated_rhs ] 
-    | ('(' single_target ')' 
-         | single_subscript_attribute_target) ':' expression ['=' annotated_rhs ] 
-    | (star_targets '=' )+ (yield_expr | star_expressions) !'=' [TYPE_COMMENT] 
-    | single_target augassign ~ (yield_expr | star_expressions) 
-
-augassign:
-    | '+=' 
-    | '-=' 
-    | '*=' 
-    | '@=' 
-    | '/=' 
-    | '%=' 
-    | '&=' 
-    | '|=' 
-    | '^=' 
-    | '<<=' 
-    | '>>=' 
-    | '**=' 
-    | '//=' 
-
-global_stmt: 'global' ','.NAME+ 
-nonlocal_stmt: 'nonlocal' ','.NAME+ 
-
-yield_stmt: yield_expr 
-
-assert_stmt: 'assert' expression [',' expression ] 
-
-del_stmt:
-    | 'del' del_targets &(';' | NEWLINE) 
-
-import_stmt: import_name | import_from
-import_name: 'import' dotted_as_names 
-# note below: the ('.' | '...') is necessary because '...' is tokenized as ELLIPSIS
-import_from:
-    | 'from' ('.' | '...')* dotted_name 'import' import_from_targets 
-    | 'from' ('.' | '...')+ 'import' import_from_targets 
-import_from_targets:
-    | '(' import_from_as_names [','] ')' 
-    | import_from_as_names !','
-    | '*' 
-import_from_as_names:
-    | ','.import_from_as_name+ 
-import_from_as_name:
-    | NAME ['as' NAME ] 
-dotted_as_names:
-    | ','.dotted_as_name+ 
-dotted_as_name:
-    | dotted_name ['as' NAME ] 
-dotted_name:
-    | dotted_name '.' NAME 
-    | NAME
-
-if_stmt:
-    | 'if' named_expression ':' block elif_stmt 
-    | 'if' named_expression ':' block [else_block] 
-elif_stmt:
-    | 'elif' named_expression ':' block elif_stmt 
-    | 'elif' named_expression ':' block [else_block] 
-else_block:
-    | 'else' ':' block 
-
-while_stmt:
-    | 'while' named_expression ':' block [else_block] 
-
-for_stmt:
-    | 'for' star_targets 'in' ~ star_expressions ':' [TYPE_COMMENT] block [else_block] 
-    | ASYNC 'for' star_targets 'in' ~ star_expressions ':' [TYPE_COMMENT] block [else_block] 
-
-with_stmt:
-    | 'with' '(' ','.with_item+ ','? ')' ':' block 
-    | 'with' ','.with_item+ ':' [TYPE_COMMENT] block 
-    | ASYNC 'with' '(' ','.with_item+ ','? ')' ':' block 
-    | ASYNC 'with' ','.with_item+ ':' [TYPE_COMMENT] block 
-
-with_item:
-    | expression 'as' star_target &(',' | ')' | ':') 
-    | expression 
-
-try_stmt:
-    | 'try' ':' block finally_block 
-    | 'try' ':' block except_block+ [else_block] [finally_block] 
-except_block:
-    | 'except' expression ['as' NAME ] ':' block 
-    | 'except' ':' block 
-finally_block:
-    | 'finally' ':' block 
-
-match_stmt:
-    | "match" subject_expr ':' NEWLINE INDENT case_block+ DEDENT 
-subject_expr:
-    | star_named_expression ',' star_named_expressions? 
-    | named_expression
-case_block:
-    | "case" patterns guard? ':' block 
-guard: 'if' named_expression 
-
-patterns:
-    | open_sequence_pattern 
-    | pattern
-pattern:
-    | as_pattern
-    | or_pattern
-as_pattern:
-    | or_pattern 'as' pattern_capture_target 
-or_pattern:
-    | '|'.closed_pattern+ 
-closed_pattern:
-    | literal_pattern
-    | capture_pattern
-    | wildcard_pattern
-    | value_pattern
-    | group_pattern
-    | sequence_pattern
-    | mapping_pattern
-    | class_pattern
-
-# Literal patterns are used for equality and identity constraints
-literal_pattern:
-    | signed_number !('+' | '-') 
-    | complex_number 
-    | strings 
-    | 'None' 
-    | 'True' 
-    | 'False' 
-
-# Literal expressions are used to restrict permitted mapping pattern keys
-literal_expr:
-    | signed_number !('+' | '-')
-    | complex_number
-    | strings
-    | 'None' 
-    | 'True' 
-    | 'False' 
-
-complex_number:
-    | signed_real_number '+' imaginary_number 
-    | signed_real_number '-' imaginary_number  
-
-signed_number:
-    | NUMBER
-    | '-' NUMBER 
-
-signed_real_number:
-    | real_number
-    | '-' real_number 
-
-real_number:
-    | NUMBER 
-
-imaginary_number:
-    | NUMBER 
-
-capture_pattern:
-    | pattern_capture_target 
-
-pattern_capture_target:
-    | !"_" NAME !('.' | '(' | '=') 
-
-wildcard_pattern:
-    | "_" 
-
-value_pattern:
-    | attr !('.' | '(' | '=') 
-attr:
-    | name_or_attr '.' NAME 
-name_or_attr:
-    | attr
-    | NAME
-
-group_pattern:
-    | '(' pattern ')' 
-
-sequence_pattern:
-    | '[' maybe_sequence_pattern? ']' 
-    | '(' open_sequence_pattern? ')' 
-open_sequence_pattern:
-    | maybe_star_pattern ',' maybe_sequence_pattern? 
-maybe_sequence_pattern:
-    | ','.maybe_star_pattern+ ','? 
-maybe_star_pattern:
-    | star_pattern
-    | pattern
-star_pattern:
-    | '*' pattern_capture_target 
-    | '*' wildcard_pattern 
-
-mapping_pattern:
-    | '{' '}' 
-    | '{' double_star_pattern ','? '}' 
-    | '{' items_pattern ',' double_star_pattern ','? '}' 
-    | '{' items_pattern ','? '}' 
-items_pattern:
-    | ','.key_value_pattern+
-key_value_pattern:
-    | (literal_expr | attr) ':' pattern 
-double_star_pattern:
-    | '**' pattern_capture_target 
-
-class_pattern:
-    | name_or_attr '(' ')' 
-    | name_or_attr '(' positional_patterns ','? ')' 
-    | name_or_attr '(' keyword_patterns ','? ')' 
-    | name_or_attr '(' positional_patterns ',' keyword_patterns ','? ')' 
-positional_patterns:
-    | ','.pattern+ 
-keyword_patterns:
-    | ','.keyword_pattern+
-keyword_pattern:
-    | NAME '=' pattern 
-
-return_stmt:
-    | 'return' [star_expressions] 
-
-raise_stmt:
-    | 'raise' expression ['from' expression ] 
-    | 'raise' 
-
-function_def:
-    | decorators function_def_raw 
-    | function_def_raw
-
-function_def_raw:
-    | 'def' NAME '(' [params] ')' ['->' expression ] ':' [func_type_comment] block 
-    | ASYNC 'def' NAME '(' [params] ')' ['->' expression ] ':' [func_type_comment] block 
-func_type_comment:
-    | NEWLINE TYPE_COMMENT &(NEWLINE INDENT)   # Must be followed by indented block
-    | TYPE_COMMENT
-
-params:
-    | parameters
-
-parameters:
-    | slash_no_default param_no_default* param_with_default* [star_etc] 
-    | slash_with_default param_with_default* [star_etc] 
-    | param_no_default+ param_with_default* [star_etc] 
-    | param_with_default+ [star_etc] 
-    | star_etc 
-
-# Some duplication here because we can't write (',' | &')'),
-# which is because we don't support empty alternatives (yet).
-#
-slash_no_default:
-    | param_no_default+ '/' ',' 
-    | param_no_default+ '/' &')' 
-slash_with_default:
-    | param_no_default* param_with_default+ '/' ',' 
-    | param_no_default* param_with_default+ '/' &')' 
-
-star_etc:
-    | '*' param_no_default param_maybe_default* [kwds] 
-    | '*' ',' param_maybe_default+ [kwds] 
-    | kwds 
-
-kwds: '**' param_no_default 
-
-# One parameter.  This *includes* a following comma and type comment.
-#
-# There are three styles:
-# - No default
-# - With default
-# - Maybe with default
-#
-# There are two alternative forms of each, to deal with type comments:
-# - Ends in a comma followed by an optional type comment
-# - No comma, optional type comment, must be followed by close paren
-# The latter form is for a final parameter without trailing comma.
-#
-param_no_default:
-    | param ',' TYPE_COMMENT? 
-    | param TYPE_COMMENT? &')' 
-param_with_default:
-    | param default ',' TYPE_COMMENT? 
-    | param default TYPE_COMMENT? &')' 
-param_maybe_default:
-    | param default? ',' TYPE_COMMENT? 
-    | param default? TYPE_COMMENT? &')' 
-param: NAME annotation? 
-
-annotation: ':' expression 
-default: '=' expression 
-
-decorators: ('@' named_expression NEWLINE )+ 
-
-class_def:
-    | decorators class_def_raw 
-    | class_def_raw
-class_def_raw:
-    | 'class' NAME ['(' [arguments] ')' ] ':' block 
-
-block:
-    | NEWLINE INDENT statements DEDENT 
-    | simple_stmts
-
-star_expressions:
-    | star_expression (',' star_expression )+ [','] 
-    | star_expression ',' 
-    | star_expression
-star_expression:
-    | '*' bitwise_or 
-    | expression
-
-star_named_expressions: ','.star_named_expression+ [','] 
-star_named_expression:
-    | '*' bitwise_or 
-    | named_expression
-
-
-assignment_expression:
-    | NAME ':=' ~ expression 
-
-named_expression:
-    | assignment_expression
-    | expression !':='
-
-annotated_rhs: yield_expr | star_expressions
-
-expressions:
-    | expression (',' expression )+ [','] 
-    | expression ',' 
-    | expression
-expression:
-    | disjunction 'if' disjunction 'else' expression 
-    | disjunction
-    | lambdef
-
-lambdef:
-    | 'lambda' [lambda_params] ':' expression 
-
-lambda_params:
-    | lambda_parameters
-
-# lambda_parameters etc. duplicates parameters but without annotations
-# or type comments, and if there's no comma after a parameter, we expect
-# a colon, not a close parenthesis.  (For more, see parameters above.)
-#
-lambda_parameters:
-    | lambda_slash_no_default lambda_param_no_default* lambda_param_with_default* [lambda_star_etc] 
-    | lambda_slash_with_default lambda_param_with_default* [lambda_star_etc] 
-    | lambda_param_no_default+ lambda_param_with_default* [lambda_star_etc] 
-    | lambda_param_with_default+ [lambda_star_etc] 
-    | lambda_star_etc 
-
-lambda_slash_no_default:
-    | lambda_param_no_default+ '/' ',' 
-    | lambda_param_no_default+ '/' &':' 
-lambda_slash_with_default:
-    | lambda_param_no_default* lambda_param_with_default+ '/' ',' 
-    | lambda_param_no_default* lambda_param_with_default+ '/' &':' 
-
-lambda_star_etc:
-    | '*' lambda_param_no_default lambda_param_maybe_default* [lambda_kwds] 
-    | '*' ',' lambda_param_maybe_default+ [lambda_kwds] 
-    | lambda_kwds 
-
-lambda_kwds: '**' lambda_param_no_default 
-
-lambda_param_no_default:
-    | lambda_param ',' 
-    | lambda_param &':' 
-lambda_param_with_default:
-    | lambda_param default ',' 
-    | lambda_param default &':' 
-lambda_param_maybe_default:
-    | lambda_param default? ',' 
-    | lambda_param default? &':' 
-lambda_param: NAME 
-
-disjunction:
-    | conjunction ('or' conjunction )+ 
-    | conjunction
-conjunction:
-    | inversion ('and' inversion )+ 
-    | inversion
-inversion:
-    | 'not' inversion 
-    | comparison
-comparison:
-    | bitwise_or compare_op_bitwise_or_pair+ 
-    | bitwise_or
-compare_op_bitwise_or_pair:
-    | eq_bitwise_or
-    | noteq_bitwise_or
-    | lte_bitwise_or
-    | lt_bitwise_or
-    | gte_bitwise_or
-    | gt_bitwise_or
-    | notin_bitwise_or
-    | in_bitwise_or
-    | isnot_bitwise_or
-    | is_bitwise_or
-eq_bitwise_or: '==' bitwise_or 
-noteq_bitwise_or:
-    | ('!=' ) bitwise_or 
-lte_bitwise_or: '<=' bitwise_or 
-lt_bitwise_or: '<' bitwise_or 
-gte_bitwise_or: '>=' bitwise_or 
-gt_bitwise_or: '>' bitwise_or 
-notin_bitwise_or: 'not' 'in' bitwise_or 
-in_bitwise_or: 'in' bitwise_or 
-isnot_bitwise_or: 'is' 'not' bitwise_or 
-is_bitwise_or: 'is' bitwise_or 
-
-bitwise_or:
-    | bitwise_or '|' bitwise_xor 
-    | bitwise_xor
-bitwise_xor:
-    | bitwise_xor '^' bitwise_and 
-    | bitwise_and
-bitwise_and:
-    | bitwise_and '&' shift_expr 
-    | shift_expr
-shift_expr:
-    | shift_expr '<<' sum 
-    | shift_expr '>>' sum 
-    | sum
-
-sum:
-    | sum '+' term 
-    | sum '-' term 
-    | term
-term:
-    | term '*' factor 
-    | term '/' factor 
-    | term '//' factor 
-    | term '%' factor 
-    | term '@' factor 
-    | factor
-factor:
-    | '+' factor 
-    | '-' factor 
-    | '~' factor 
-    | power
-power:
-    | await_primary '**' factor 
-    | await_primary
-await_primary:
-    | AWAIT primary 
-    | primary
-primary:
-    | primary '.' NAME 
-    | primary genexp 
-    | primary '(' [arguments] ')' 
-    | primary '[' slices ']' 
-    | atom
-
-slices:
-    | slice !',' 
-    | ','.slice+ [','] 
-slice:
-    | [expression] ':' [expression] [':' [expression] ] 
-    | named_expression 
-atom:
-    | NAME
-    | 'True' 
-    | 'False' 
-    | 'None' 
-    | strings
-    | NUMBER
-    | (tuple | group | genexp)
-    | (list | listcomp)
-    | (dict | set | dictcomp | setcomp)
-    | '...' 
-
-strings: STRING+ 
-list:
-    | '[' [star_named_expressions] ']' 
-listcomp:
-    | '[' named_expression for_if_clauses ']' 
-tuple:
-    | '(' [star_named_expression ',' [star_named_expressions]  ] ')' 
-group:
-    | '(' (yield_expr | named_expression) ')' 
-genexp:
-    | '(' ( assignment_expression | expression !':=') for_if_clauses ')' 
-set: '{' star_named_expressions '}' 
-setcomp:
-    | '{' named_expression for_if_clauses '}' 
-dict:
-    | '{' [double_starred_kvpairs] '}' 
-
-dictcomp:
-    | '{' kvpair for_if_clauses '}' 
-double_starred_kvpairs: ','.double_starred_kvpair+ [','] 
-double_starred_kvpair:
-    | '**' bitwise_or 
-    | kvpair
-kvpair: expression ':' expression 
-for_if_clauses:
-    | for_if_clause+ 
-for_if_clause:
-    | ASYNC 'for' star_targets 'in' ~ disjunction ('if' disjunction )* 
-    | 'for' star_targets 'in' ~ disjunction ('if' disjunction )* 
-
-yield_expr:
-    | 'yield' 'from' expression 
-    | 'yield' [star_expressions] 
-
-arguments:
-    | args [','] &')' 
-args:
-    | ','.(starred_expression | ( assignment_expression | expression !':=') !'=')+ [',' kwargs ] 
-    | kwargs 
-
-kwargs:
-    | ','.kwarg_or_starred+ ',' ','.kwarg_or_double_starred+ 
-    | ','.kwarg_or_starred+
-    | ','.kwarg_or_double_starred+
-starred_expression:
-    | '*' expression 
-kwarg_or_starred:
-    | NAME '=' expression 
-    | starred_expression 
-kwarg_or_double_starred:
-    | NAME '=' expression 
-    | '**' expression 
-
-# NOTE: star_targets may contain *bitwise_or, targets may not.
-star_targets:
-    | star_target !',' 
-    | star_target (',' star_target )* [','] 
-star_targets_list_seq: ','.star_target+ [','] 
-star_targets_tuple_seq:
-    | star_target (',' star_target )+ [','] 
-    | star_target ',' 
-star_target:
-    | '*' (!'*' star_target) 
-    | target_with_star_atom
-target_with_star_atom:
-    | t_primary '.' NAME !t_lookahead 
-    | t_primary '[' slices ']' !t_lookahead 
-    | star_atom
-star_atom:
-    | NAME 
-    | '(' target_with_star_atom ')' 
-    | '(' [star_targets_tuple_seq] ')' 
-    | '[' [star_targets_list_seq] ']' 
-
-single_target:
-    | single_subscript_attribute_target
-    | NAME 
-    | '(' single_target ')' 
-single_subscript_attribute_target:
-    | t_primary '.' NAME !t_lookahead 
-    | t_primary '[' slices ']' !t_lookahead 
-;
-del_targets: ','.del_target+ [','] ;
-del_target:
-    | t_primary '.' NAME !t_lookahead 
-    | t_primary '[' slices ']' !t_lookahead 
-    | del_t_atom
-;
-del_t_atom:
-    | NAME 
-    | '(' del_target ')' 
-    | '(' [del_targets] ')' 
-    | '[' [del_targets] ']' 
-;
-t_primary:
-    | t_primary '.' NAME &t_lookahead 
-    | t_primary '[' slices ']' &t_lookahead 
-    | t_primary genexp &t_lookahead 
-    | t_primary '(' [arguments] ')' &t_lookahead 
-    | atom &t_lookahead;
-t_lookahead: '(' | '[' | '.''
+%token<str> IDENTIFIER CONSTANT STRING_LITERAL
+%token<str> INC DEC LEFT RIGHT LE GE EQ NE
+%token<str> AND OR MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN
+%token<str> SUB_ASSIGN LEFT_ASSIGN RIGHT_ASSIGN AND_ASSIGN
+%token<str> XOR_ASSIGN OR_ASSIGN  FL EXP
+
+%token<str> GLOBAL IMPORT FROM IN
+%token<str> TRUE FALSE NONE
+%token<str> RANGE CLASS DEF 
+
+%token<str> IF ELSE WHILE DO FOR CONTINUE BREAK RETURN PRINT NEWLINE TAB
+
+
+%token<str> ',' '^' '|' ';' '{' '}' '[' ']' '(' ')' '+' '-' '%' '/' '*' '.' '>' '<' 
+%token<str> '&' '=' '!' '~' ':' '?'
+
+
+
+
+
+%type <ptr> primary_expression postfix_expression argument_expression_list unary_expression unary_operator cast_expression multiplicative_expression additive_expression
+%type <ptr> shift_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression
+%type <ptr> conditional_expression assignment_expression assignment_operator expression constant_expression declaration declaration_specifiers init_declarator_list init_declarator
+%type <ptr> storage_class_specifier type_specifier struct_or_union_specifier struct_or_union struct_declaration_list struct_declaration specifier_qualifier_list struct_declarator_list
+%type <ptr> struct_declarator enum_specifier enumerator_list enumerator type_qualifier declarator direct_declarator pointer type_qualifier_list parameter_type_list parameter_list
+%type <ptr> parameter_declaration identifier_list type_name abstract_declarator direct_abstract_declarator initializer initializer_list statement labeled_statement compound_statement
+%type <ptr> declaration_list statement_list expression_statement selection_statement iteration_statement jump_statement translation_unit external_declaration function_definition
+
+%start translation_unit
+%%
+
+primary_expression
+	: IDENTIFIER											{$$=add($1);}				
+	| CONSTANT												{$$=add($1);}
+	| STRING_LITERAL										{$$=add($1);}
+	| '(' expression ')'									{$$=$2;}
+	;
+
+postfix_expression
+	: primary_expression       								{$$=$1;}
+	| postfix_expression '[' expression ']'					{$$=add("postfix_expression", $1, $3);}
+	| postfix_expression '(' ')'							{$$=$1;}
+	| postfix_expression '(' argument_expression_list ')'   {$$=add("postfix_expression", $1, $3);}
+	| postfix_expression '.' IDENTIFIER						{$$=add("postfix_expression.IDENTIFIER", $1, add($3));}
+	| postfix_expression PTR_OP IDENTIFIER					{$$=add($2,$1,add($3));}
+	| postfix_expression INC_OP							    {$$=add($2, $1);}
+	| postfix_expression DEC_OP								{$$=add($2, $1);}
+	;
+
+argument_expression_list									
+	: assignment_expression									{$$=$1;}
+	| argument_expression_list ',' assignment_expression    {$$=add("argument_expression_list", $1, $3);}
+	;
+
+unary_expression
+	: postfix_expression									{$$=$1;}
+	| INC_OP unary_expression								{$$=add($1,$2);}
+	| DEC_OP unary_expression								{$$=add($1,$2);}
+	| unary_operator cast_expression						{$$=add("unary_expression",$1,$2);}
+	| SIZEOF unary_expression								{$$=add($1,$2);}
+	| SIZEOF '(' type_name ')'								{$$=add($1,$3);}
+	;
+
+unary_operator
+	: '&'		{$$=add("&");}
+	| '*'		{$$=add("*");}
+	| '+'		{$$=add("+");}
+	| '-'		{$$=add("-");}
+	| '~'		{$$=add("~");}
+	| '!'		{$$=add("!");}
+	;
+
+cast_expression
+	: unary_expression									   {$$=$1;}
+	| '(' type_name ')' cast_expression                    {$$=add("cast_expression", $2, $4);}
+	;
+
+multiplicative_expression
+	: cast_expression									   {$$=$1;}
+	| multiplicative_expression '*' cast_expression        {$$=add("*", $1, $3);}
+	| multiplicative_expression '/' cast_expression        {$$=add("/", $1, $3);}
+	| multiplicative_expression '%' cast_expression        {$$=add("%", $1, $3);}
+	;
+
+additive_expression
+	: multiplicative_expression								{$$=$1;}
+	| additive_expression '+' multiplicative_expression     {$$=add("+", $1, $3);}
+	| additive_expression '-' multiplicative_expression     {$$=add("-", $1, $3);}
+	;
+
+shift_expression
+	: additive_expression									{$$=$1;}
+	| shift_expression LEFT_OP additive_expression		{$$=add("<<",$1,$3);}
+	| shift_expression RIGHT_OP additive_expression     {$$=add(">>",$1,$3);}
+	;
+
+relational_expression	
+	: shift_expression										{$$=$1;}
+	| relational_expression '<' shift_expression   {$$=add("<",$1,$3);}
+	| relational_expression '>' shift_expression   {$$=add(">",$1,$3);}
+	| relational_expression LE_OP shift_expression {$$=add("<=",$1,$3);}
+	| relational_expression GE_OP shift_expression {$$=add(">=",$1,$3);}
+	;
+
+equality_expression
+	: relational_expression									{$$=$1;}
+	| equality_expression EQ_OP relational_expression       {$$=add("==",$1,$3);}
+	| equality_expression NE_OP relational_expression       {$$=add("!=",$1,$3);}
+	;
+
+and_expression
+	: equality_expression									       {$$=$1;}
+	| and_expression '&' equality_expression                       {$$=add("&",$1,$3);}
+	;
+
+exclusive_or_expression
+	: and_expression											    {$$=$1;}
+	| exclusive_or_expression '^' and_expression			{$$=add("^",$1,$3);}
+	;
+
+inclusive_or_expression
+	: exclusive_or_expression										{$$=$1;}
+	| inclusive_or_expression '|' exclusive_or_expression			{$$=add("|",$1,$3);}
+	;
+
+logical_and_expression
+	: inclusive_or_expression										{$$=$1;}
+	| logical_and_expression AND_OP inclusive_or_expression			{$$=add("&&",$1,$3);}
+	;
+
+logical_or_expression
+	: logical_and_expression										{$$=$1;}
+	| logical_or_expression OR_OP logical_and_expression			{$$=add("||",$1,$3);}
+	;
+
+/*check & vs && */
+conditional_expression
+	: logical_or_expression												{$$=$1;}
+	| logical_or_expression '?' expression ':' conditional_expression    {$$=add("conditional_expression",$1,$3,$5);}
+	;
+
+assignment_expression
+	: conditional_expression													{$$=$1;}
+	| unary_expression assignment_operator assignment_expression		    {$$=add("assignment_expression",$1,$2,$3);}
+	;
+
+assignment_operator
+	: '='				{$$=add("=");}
+	| MUL_ASSIGN		{$$=add("*=");}
+	| DIV_ASSIGN		{$$=add("/=");}
+	| MOD_ASSIGN		{$$=add("%=");}
+	| ADD_ASSIGN		{$$=add("+=");}
+	| SUB_ASSIGN		{$$=add("-=");}
+	| LEFT_ASSIGN		{$$=add("<<=");}
+	| RIGHT_ASSIGN		{$$=add(">>=");}
+	| AND_ASSIGN		{$$=add("&=");}
+	| XOR_ASSIGN		{$$=add("^=");}
+	| OR_ASSIGN		   {$$=add("|=");}
+	;
+/*check here for error*/
+expression
+	: assignment_expression										{$$=$1;}
+	| expression ',' assignment_expression						{$$=add("expression",$1,$3);}
+	;
+
+constant_expression
+	: conditional_expression								   {$$=$1;}
+	;
+
+declaration
+	: declaration_specifiers ';'								{$$=$1;}					
+	| declaration_specifiers init_declarator_list ';'			{$$=add("declaration",$1,$2);}
+	;
+
+declaration_specifiers
+	: storage_class_specifier									{$$=$1;}
+	| storage_class_specifier declaration_specifiers			{$$=add("declaration_specifiers",$1,$2);}
+	| type_specifier											{$$=$1;}
+	| type_specifier declaration_specifiers						{$$=add("declaration_specifiers",$1,$2);}
+	| type_qualifier											{$$=$1;}
+	| type_qualifier declaration_specifiers						{$$=add("declaration_specifiers",$1,$2);}
+	;
+
+init_declarator_list
+	: init_declarator											{$$=$1;}
+	| init_declarator_list ',' init_declarator					{$$=add("init_declarator_list",$1,$3);}	
+	;
+
+init_declarator
+	: declarator											{$$=$1;}
+	| declarator '=' initializer							{$$=add("init_declarator",$1,$3);}
+	;
+
+storage_class_specifier
+	: TYPEDEF												{$$=add($1);}
+	| EXTERN												{$$=add($1);}
+	| STATIC												{$$=add($1);}
+	| AUTO												    {$$=add($1);}
+	| REGISTER												{$$=add($1);}
+	;
+
+type_specifier
+	: VOID												{$$=add($1);}
+	| CHAR												{$$=add($1);}
+	| SHORT												{$$=add($1);}
+	| INT												{$$=add($1);}
+	| LONG												{$$=add($1);}
+	| FLOAT												{$$=add($1);}
+	| DOUBLE										    {$$=add($1);}
+	| SIGNED											{$$=add($1);}
+	| UNSIGNED										    {$$=add($1);}
+	| struct_or_union_specifier							{$$=$1;}
+	| enum_specifier								    {$$=$1;}
+	| TYPE_NAME											{$$=add($1);}
+	;
+
+struct_or_union_specifier
+	: struct_or_union IDENTIFIER '{' struct_declaration_list '}'  {$$=add("struct_or_union_specifier",$1,add($2),$4);}
+	| struct_or_union '{' struct_declaration_list '}'             {$$=add("struct_or_union_specifier",$1,$3);}
+	| struct_or_union IDENTIFIER								  {$$=add("struct_or_union_specifier",$1,add($2));}
+	;
+
+struct_or_union
+	: STRUCT										    {$$=add($1);}
+	| UNION										        {$$=add($1);}
+	;
+
+struct_declaration_list
+	: struct_declaration											{$$=$1;}
+	| struct_declaration_list struct_declaration					{$$=add("struct_declaration_list",$1,$2);}
+	;
+
+struct_declaration
+	: specifier_qualifier_list struct_declarator_list ';'          {$$=add("struct_declaration",$1,$2);}
+	;
+
+specifier_qualifier_list
+	: type_specifier specifier_qualifier_list					{$$=add("specifier_qualifier_list",$1,$2);}
+	| type_specifier											{$$=$1;}
+	| type_qualifier specifier_qualifier_list					{$$=add("specifier_qualifier_list",$1,$2);}
+	| type_qualifier											{$$=$1;}
+	;
+
+struct_declarator_list
+	: struct_declarator											{$$=$1;}
+	| struct_declarator_list ',' struct_declarator				{$$=add("struct_declarator_list",$1,$3);}              
+	;
+
+struct_declarator
+	: declarator											{$$=$1;}
+	| ':' constant_expression								{$$=$2;}
+	| declarator ':' constant_expression					{$$=add("struct_declarator",$1,$3);}
+	;
+
+enum_specifier
+	: ENUM '{' enumerator_list '}'					{$$=add("enum_specifier",add($1),$3);}
+	| ENUM IDENTIFIER '{' enumerator_list '}'	   	{$$=add("enum_specifier",add($1),add($2),$4);}
+	| ENUM IDENTIFIER								{$$=add("enum_specifier",add($1),add($2));}
+	;
+
+enumerator_list
+	: enumerator											{$$=$1;}
+	| enumerator_list ',' enumerator						{$$=add("enumerator_list",$1,$3);}
+	;
+
+enumerator
+	: IDENTIFIER										{$$=add($1);}
+	| IDENTIFIER '=' constant_expression                {$$=add("=",add($1),$3);}
+	;
+
+type_qualifier	
+	: CONST										    {$$=add($1);}
+	| VOLATILE										{$$=add($1);}
+	;
+
+declarator
+	: pointer direct_declarator	               					{$$=add("declarator",$1,$2);}
+	| direct_declarator											{$$=$1;}
+	;
+
+direct_declarator
+	: IDENTIFIER										    	{$$=add($1);}
+	| '(' declarator ')'										{$$=$2;}
+	| direct_declarator '[' constant_expression ']'        		{$$=add("direct_declarator",$1,$3);}
+	| direct_declarator '[' ']'							  		{$$=add("direct_declarator",$1,add("[]"));}
+	| direct_declarator '(' parameter_type_list ')'        		{$$=add("direct_declarator",$1,$3);}
+	| direct_declarator '(' identifier_list ')'       		    {$$=add("direct_declarator",$1,$3);}
+	| direct_declarator '(' ')'									{$$=add("direct_declarator",$1,add("()"));}
+	;
+
+pointer
+	: '*'														{$$=add("*");}
+	| '*' type_qualifier_list									{$$=add("*",$2);}
+	| '*' pointer												{$$=add("*",$2);}
+	| '*' type_qualifier_list pointer		    				{$$=add("*",$2,$3);}
+	;
+
+type_qualifier_list
+	: type_qualifier											{$$=$1;}
+	| type_qualifier_list type_qualifier						{$$=add("type_qualifier_list",$1,$2);}
+	;
+
+
+parameter_type_list
+	: parameter_list											{$$=$1;}
+	| parameter_list ',' ELLIPSIS								{$$=add("parameter_type_list",$1,add($3));}
+	;
+
+parameter_list
+	: parameter_declaration										{$$=$1;}
+	| parameter_list ',' parameter_declaration                 	{$$=add("parameter_list",$1,$3);}
+	;
+
+parameter_declaration
+	: declaration_specifiers declarator                 		{$$=add("parameter_declaration",$1,$2);}
+	| declaration_specifiers abstract_declarator                {$$=add("parameter_declaration",$1,$2);}
+	| declaration_specifiers									{$$=$1;}
+	;
+
+identifier_list
+	: IDENTIFIER												{$$=add($1);}
+	| identifier_list ',' IDENTIFIER							{$$=add("identifier_list",$1,add($3));}
+	;
+
+type_name
+	: specifier_qualifier_list									{$$=$1;}
+	| specifier_qualifier_list abstract_declarator		 		{$$=add("type_name",$1,$2);}
+	;
+
+abstract_declarator
+	: pointer													{$$=$1;}
+	| direct_abstract_declarator								{$$=$1;}
+	| pointer direct_abstract_declarator 						{$$=add("abstract_declarator",$1,$2);}
+	;
+
+direct_abstract_declarator
+	: '(' abstract_declarator ')'								{$$=$2;}
+	| '[' ']'													{$$=add("[ ]");}
+	| '[' constant_expression ']'								{$$=$2;}
+	| direct_abstract_declarator '[' ']'						{$$=add("direct_abstract_declarator",$1,add("[]"));}
+	| direct_abstract_declarator '[' constant_expression ']'  	{$$ = add("direct_abstract_declarator", $1, $3);;}
+	| '(' ')'													{$$ = add("( )");}
+	| '(' parameter_type_list ')'								{$$=$2;}
+	| direct_abstract_declarator '(' ')'						{$$=add("direct_abstract_declarator",$1,add("()"));}
+	| direct_abstract_declarator '(' parameter_type_list ')'    {$$=add("direct_abstract_declarator",$1,$3);}
+	;
+
+initializer
+	: assignment_expression											{$$=$1;}
+	| '{' initializer_list '}'										{$$=$2;}
+	| '{' initializer_list ',' '}'									{$$=add("initializer",$2,add($3));}
+	;
+
+initializer_list
+	: initializer											{$$=$1;}
+	| initializer_list ',' initializer						{$$=add("initializer_list",$1,$3);}
+	;
+
+statement
+	: labeled_statement												{$$=$1;}
+	| compound_statement											{$$=$1;}
+	| expression_statement											{$$=$1;}
+	| selection_statement											{$$=$1;}
+	| iteration_statement											{$$=$1;}
+	| jump_statement												{$$=$1;}
+	;
+
+labeled_statement
+	: IDENTIFIER ':' statement			 		 {$$=add("labeled_statement",add($1),$3);}
+	| CASE constant_expression ':' statement   	 {$$=add("labeled_statement",add("case"),$2,$4);}
+	| DEFAULT ':' statement   			  		 {$$=add("labeled_statement",add("default"),$3);}
+	;
+
+compound_statement
+	: '{' '}'    								{$$=add("{ }");}
+	| '{' statement_list '}'					{$$=add("compound_statement",$2);}
+	| '{' declaration_list '}'					{$$=add("compound_statement",$2);}
+	| '{' declaration_list statement_list '}'   {$$=add("compound_statement",$2,$3);}
+	;
+
+declaration_list
+	: declaration											{$$=$1;}
+	| declaration_list declaration                        	{$$=add("declaration_list",$1,$2);}
+	;
+
+statement_list
+	: statement												{$$=$1;}
+	| statement_list statement								{$$=add("statement_list",$1,$2);}
+	;
+
+expression_statement
+	: ';'														{$$=add(";");}
+	| expression ';'											{$$=$1;}
+	;
+
+selection_statement
+	: IF '(' expression ')' statement               		{$$=add("IF (expr) stmt",$3,$5);}
+	| IF '(' expression ')' statement ELSE statement     	{$$=add("IF (expr) stmt ELSE stmt",$3,$5,$7);}
+	| SWITCH '(' expression ')' statement              	 	{$$=add("SWITCH (expr) stmt",$3,$5);}
+	;
+
+iteration_statement
+	: WHILE '(' expression ')' statement                                        	{$$=add("WHILE (expr) stmt",$3,$5);}
+	| DO statement WHILE '(' expression ')' ';'			                            {$$=add("DO stmt WHILE (expr)",$2,$5);}
+	| FOR '(' expression_statement expression_statement ')' statement               {$$=add("FOR (expr_stmt expr_stmt) stmt",$3,$4,$6);}
+	| FOR '(' expression_statement expression_statement expression ')' statement    {$$=add("FOR (expr_stmt expr_stmt expr) stmt",$3,$4,$5,$7);}
+	;
+
+jump_statement
+	: GOTO IDENTIFIER ';'						{$$=add("jump_statement",add($1),add($2));}
+	| CONTINUE ';'						        {$$=add("continue");}
+	| BREAK ';'						            {$$=add("break");}
+	| RETURN ';'						        {$$=add("return");}
+	| RETURN expression ';'						{$$=add("jump_statement",add("return"),$2);}
+	;
+
+translation_unit
+	: external_declaration										   {$$=$1;}
+	| translation_unit external_declaration                        {$$=add("translation_unit",$1,$2);}
+	;
+
+external_declaration
+	: function_definition									{$$=$1;}
+	| declaration											{$$=$1;}
+	;
+
+function_definition
+	: declaration_specifiers declarator declaration_list compound_statement       {$$=add("function_definition",$1,$2,$3,$4);}
+	| declaration_specifiers declarator compound_statement                        {$$=add("function_definition",$1,$2,$3);}
+	| declarator declaration_list compound_statement                              {$$=add("function_definition",$1,$2,$3);}
+	| declarator compound_statement                                               {$$=add("function_definition",$1,$2);}
+	;
+
+%%
+#include <stdio.h>
+#define red   "\033[31;1m"
+#define reset   "\033[0m"
+extern char yytext[];
+extern int column;
+extern int line;
+char *filename;
+FILE *in=NULL;
+FILE *out=NULL;
+
+void yyerror(char *s)
+{	
+	fflush(stdout);
+	fprintf(stderr,"%s:%d:%d:%s Error: %s\n",filename,line,column,red,reset);
+	fclose(in);
+	in=freopen(filename,"r",stdin);
+	string str;
+	for(int i=0;i<line;i++)
+	{
+		getline(cin,str);
+	}
+	
+	cerr<<str;
+
+	fprintf(stderr,"\n%*s\n%s%*s%s\n", column, "^", red,column,s,reset);
+}
+
+void help(int f)
+{	
+	if(f) printf("%sError: %s\n",red,reset);
+	printf("Give Input file with -i flag\n");
+	printf("Give Output file with -o flag\n");
+}
+
+
+int main(int argc, char *argv[])
+{	
+	if(argc==1)
+	{
+		help(1);
+		return 0;
+	}
+	
+	for(int i=1;i<argc;i++)
+	{
+
+		if(strcmp("-help",argv[i])==0)
+		{
+			help(0);
+			return 0;
+		}
+		else if(strcmp("-i",argv[i])==0)
+		{
+			if(i+1<argc)
+			{
+				in=freopen(argv[i+1],"r",stdin);
+				filename=argv[i+1];
+				i++;
+
+				if(!in)
+				{
+					help(1);
+					return 0;
+				}
+			}
+			else
+			{
+				help(1);
+				return 0;
+			}
+		}
+
+		else if(strcmp("-o",argv[i])==0)
+		{
+			if(i+1<argc)
+			{
+				out =freopen(argv[i+1],"w",stdout);
+				i++;
+				if(!out)
+				{
+					help(1);
+					return 0;
+				}
+			}
+			else
+			{
+				help(1);
+				return 0;
+			}
+		}
+		else
+		{
+			help(1);
+			return 0;
+		}
+	}
+	if(!in)help(1);
+	if(!out)freopen("ast.dot","w",stdout);
+	BeginGraph();
+	yyparse();
+	EndGraph();
+	
+} 
