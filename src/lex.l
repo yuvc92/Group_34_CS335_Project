@@ -22,11 +22,27 @@ void f();
 
 %}
 
+
+class Geeks
+{
+    // Access specifier
+    public:
+ 
+    // Data Members
+    string geekname;
+ 
+    // Member Functions()
+    void printname()
+    {
+       cout << "Geekname is: " << geekname;
+    }
+};
+
+
 %%
 "#"			{comment(); }
 "break"			{ f(); printf("BREAK         ");  return(BREAK); }
 "continue"		{ f(); printf("CONTINUE      ");  return(CONTINUE); }
-"do"			{ f(); printf("DO            ");  return(DO); }
 "else"			{ f(); printf("ELSE          ");  return(ELSE); }
 "for"			{ f(); printf("FOR           ");  return(FOR); }
 "if"			{ f(); printf("IF            ");  return(IF); }
@@ -59,53 +75,47 @@ L?\"(\\.|[^\\"])*\"	{ f();printf("STRING_LITERAL	"); return(STRING_LITERAL); }
 
 ">>="			{ f(); printf("RIGHT_ASSIGN	 "); return(RIGHT_ASSIGN);}
 "<<="			{ f(); printf("LEFT_ASSIGN   "); return(LEFT_ASSIGN);}
-"+="			{ f(); printf("ADD_ASSIGN    "); return(ADD_ASSIGN);}
-"-="			{ f(); printf("SUB_ASSIGN    "); return(SUB_ASSIGN);}
-"*="			{ f(); printf("MUL_ASSIGN    "); return(MUL_ASSIGN);}
-"/="			{ f(); printf("DIV_ASSIGN    "); return(DIV_ASSIGN);}
-"%="			{ f(); printf("MOD_ASSIGN    "); return(MOD_ASSIGN);}
-"&="			{ f(); printf("AND_ASSIGN    "); return(AND_ASSIGN);}
-"^="			{ f(); printf("XOR_ASSIGN    "); return(XOR_ASSIGN);}
-"|="			{ f(); printf("OR_ASSIGN     "); return(OR_ASSIGN);}
-">>"			{ f(); printf("RIGHT      "); return(RIGHT);}
-"<<"			{ f(); printf("LEFT       "); return(LEFT);}
-"++"			{ f(); printf("INC        "); return(INC);}
-"--"			{ f(); printf("DEC        "); return(DEC);}
-"->"			{ f(); printf("PTR        "); return(PTR);}
-"&&"			{ f(); printf("AND        "); return(AND);}
-"||"			{ f(); printf("OR         "); return(OR);}
-"<="			{ f(); printf("LE         "); return(LE); }
-">="			{ f(); printf("GE         "); return(GE);}
-"=="			{ f(); printf("EQ         "); return(EQ);}
-"!="			{ f(); printf("NE         "); return(NE); }
-"//"			{ f();printf("FLOOR_DIV",yytext); return(FL); }
-"**"			{ f();printf("EXPONENT",yytext); return(EXP); }
+"+="			{ f(); printf("ADD_ASSIGN    "); return(PLUSEQUAL);}
+"-="			{ f(); printf("SUB_ASSIGN    "); return(MINEQUAL);}
+"*="			{ f(); printf("MUL_ASSIGN    "); return(STAREQUAL;}
+"/="			{ f(); printf("DIV_ASSIGN    "); return(SLASHEQUAL);}
+"%="			{ f(); printf("MOD_ASSIGN    "); return(PERCENTEQUAL);}
+">>"			{ f(); printf("RIGHT      "); return(RIGHTSHIFT);}
+"<<"			{ f(); printf("LEFT       "); return(LEFTSHIFT);}
 
-";"			{ f();printf("%s             ",yytext); return(';'); }
-("{")	    		{ f();printf("%s             ",yytext); return('{'); }
-("}")	    		{ f();printf("%s             ",yytext); return('}'); }
-","			{ f();printf("%s             ",yytext); return(','); }
-":"			{ f();printf("%s             ",yytext); return(':'); }
-"="			{ f();printf("%s             ",yytext); return('='); }
-"("			{ f();printf("%s             ",yytext); return('('); }
-")"			{ f();printf("%s             ",yytext); return(')'); }
-("[")   		{ f();printf("%s             ",yytext); return('['); }
-("]")       		{ f();printf("%s             ",yytext); return(']'); }
-"."			{ f();printf("%s             ",yytext); return('.'); }
-"&"			{ f();printf("%s             ",yytext); return('&'); }
-"~"			{ f();printf("%s             ",yytext); return('~'); }
-"-"			{ f();printf("%s             ",yytext); return('-'); }
-"+"			{ f();printf("%s             ",yytext); return('+'); }
-"*"			{ f();printf("%s             ",yytext); return('*'); }
-"/"			{ f();printf("%s             ",yytext); return('/'); }
-"%"			{ f();printf("%s             ",yytext); return('%'); }
-"<"			{ f();printf("%s             ",yytext); return('<'); }
-">"			{ f();printf("%s             ",yytext); return('>'); }
-"^"			{ f();printf("%s             ",yytext); return('^'); }
-"|"			{ f();printf("%s             ",yytext); return('|'); }
-":"			{ f();printf("%s             ",yytext); return(':'); }
+"<="			{ f(); printf("LE         "); return(LESSEQUAL); }
+">="			{ f(); printf("GE         "); return(GREATEREQUAL);}
+"=="			{ f(); printf("EQ         "); return(EQEQUAL);}
+"!="			{ f(); printf("NE         "); return(NOTEQUAL); }
+"//"			{ f();printf("FLOOR_DIV",yytext); return(SLASHSLASH); }
+"**"			{ f();printf("EXPONENT",yytext); return(STARSTAR); }
+"//="			{ f();printf("FLOOR_DIV_EQ",yytext); return(SLASHSLASHEQUAL); }
+"**="			{ f();printf("EXPONENT_EQ",yytext); return(STARSTAREQUAL); }
+
+";"			{ f();printf("SEMI COLON             ",yytext); return(SEMI); }
+("{")	    		{ f();printf("LEFT BRACE             ",yytext); return(LBRACE); }
+("}")	    		{ f();printf("RIGHT BACE             ",yytext); return(RBRACE); }
+","			{ f();printf("COMMA             ",yytext); return(COMMA); }
+"="			{ f();printf("EQUAL             ",yytext); return(EQUAL); }
+"("			{ f();printf("LPAREN             ",yytext); return(LPAREN); }
+")"			{ f();printf("RPAREN             ",yytext); return(RPAREN); }
+("[")   		{ f();printf("LEFT SQ BRACKET             ",yytext); return(LSQB); }
+("]")       		{ f();printf("RIGHT SQ BRACKET             ",yytext); return(RSQB); }
+"."			{ f();printf("DOT             ",yytext); return(DOT); }
+"&"			{ f();printf("AMPERSAND             ",yytext); return(AMPER); }
+"~"			{ f();printf("TILDE             ",yytext); return(TILDE); }
+"-"			{ f();printf("MINS             ",yytext); return(MINUS); }
+"+"			{ f();printf("PLUS            ",yytext); return(PLUS); }
+"*"			{ f();printf("STAR             ",yytext); return(STAR); }
+"/"			{ f();printf("SLASH             ",yytext); return(SLASH); }
+"%"			{ f();printf("PERCENT             ",yytext); return(PERCENT); }
+"<"			{ f();printf("LESS             ",yytext); return(LESS); }
+">"			{ f();printf("GREATER             ",yytext); return(GREATER); }
+"^"			{ f();printf("CAP             ",yytext); return(CIRCUMFLEX); }
+"|"			{ f();printf("VERTICAL BAR             ",yytext); return(VBAR); }
+":"			{ f();printf("COLON             ",yytext); return(COLON); }
 [\n]			{ f();printf("NEW_LINE       ",yytext); return(NEW_LINE); }
-[\t]			{ f();printf("TAB            ",yytext); return('TAB'); }
+[\t]			{ f();printf("TAB            ",yytext); return(); }
 [ \v\f]			{ f(); }
 .			{ f(); printf("INVALID       "); return yytext[0]; }
 

@@ -3,8 +3,26 @@
 #include <string>
 #include "node.h"
 #include <fstream>
+#include <set>
+#include <cstring>
+#include "node.h"
+#include "type.h"
+#include <fstream>
+#include<vector>
 
+typedef struct{
 
+}node;
+
+node* makenode(){
+	string name;
+}
+
+node* assign(node* n){
+	if(!node){
+
+	}
+}
 using namespace std;
 void yyerror(char *s);
 int yylex();
@@ -16,439 +34,696 @@ int yylex();
 }
 
 
+%token<str> EQEQUAL NOTEQUAL LESSEQUAL LEFTSHIFT GREATEREQUAL 
+%token<str> RIGHTSHIFT PLUSEQUAL MINEQUAL STAREQUAL SLASHEQUAL PERCENTEQUAL 
+%token<str> STARSTAR SLASHSLASH STARSTAREQUAL SLASHSLASHEQUAL 
+%token<str> COLON COMMA SEMI PLUS MINUS STAR SLASH VBAR AMPER LESS 
+%token<str> GREATER EQUAL DOT PERCENT BACKQUOTE '^' TILDE AT 
+%token<str> LPAREN  RPAREN LBRACE  RBRACE LSQB  RSQB 
+%token<str> NEWLINE INUMBER FNUMBER BINARYNUMBER OCTALNUMBER HEXADECIMALNUMBER  
+%token<str> NUMBER INDENT  DEDENT TRIPLESTRING  STRING  
+%token<str> RAWSTRING UNICODESTRING NAME WS ENDMARKER
 
-%token<str> IDENTIFIER CONSTANT STRING_LITERAL
-%token<str> INC DEC LEFT RIGHT LE GE EQ NE
-%token<str> AND OR MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN
-%token<str> SUB_ASSIGN LEFT_ASSIGN RIGHT_ASSIGN AND_ASSIGN
-%token<str> XOR_ASSIGN OR_ASSIGN  FL EXP
-
-%token<str> GLOBAL IMPORT FROM IN
-%token<str> TRUE FALSE NONE
-%token<str> RANGE CLASS DEF 
-
-%token<str> IF ELSE WHILE DO FOR CONTINUE BREAK RETURN PRINT NEWLINE TAB
-
-
-%token<str> ',' '^' '|' ';' '{' '}' '[' ']' '(' ')' '+' '-' '%' '/' '*' '.' '>' '<' 
-%token<str> '&' '=' '!' '~' ':' '?'
+%token<str> AND AS ASSERT BREAK CLASS CONTINUE DEF DEL ELIF ELSE EXCEPT EXEC FINALLY FOR FROM GLOBAL
+%token<str> IF IMPORT IN IS LAMBDA NOT OR PASS PRINT RAISE RETURN TRY WHILE WITH YIELD
 
 
 
 
 
-%type <ptr> primary_expression postfix_expression argument_expression_list unary_expression unary_operator cast_expression multiplicative_expression additive_expression
-%type <ptr> shift_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression
-%type <ptr> conditional_expression assignment_expression assignment_operator expression constant_expression declaration declaration_specifiers init_declarator_list init_declarator
-%type <ptr> storage_class_specifier type_specifier struct_or_union_specifier struct_or_union struct_declaration_list struct_declaration specifier_qualifier_list struct_declarator_list
-%type <ptr> struct_declarator enum_specifier enumerator_list enumerator type_qualifier declarator direct_declarator pointer type_qualifier_list parameter_type_list parameter_list
-%type <ptr> parameter_declaration identifier_list type_name abstract_declarator direct_abstract_declarator initializer initializer_list statement labeled_statement compound_statement
-%type <ptr> declaration_list statement_list expression_statement selection_statement iteration_statement jump_statement translation_unit external_declaration function_definition
+//%type <ptr> primary_expression postfix_expression argument_expression_list unary_expression unary_operator cast_expression multiplicative_expression additive_expression
+//%type <ptr> shift_expression relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression
+//%type <ptr> conditional_expression assignment_expression assignment_operator expression constant_expression declaration declaration_specifiers init_declarator_list init_declarator
+//%type <ptr> storage_class_specifier type_specifier struct_or_union_specifier struct_or_union struct_declaration_list struct_declaration specifier_qualifier_list struct_declarator_list
+//%type <ptr> struct_declarator enum_specifier enumerator_list enumerator type_qualifier declarator direct_declarator pointer type_qualifier_list parameter_type_list parameter_list
+//%type <ptr> parameter_declaration identifier_list type_name abstract_declarator direct_abstract_declarator initializer initializer_list statement labeled_statement compound_statement
+// %type <ptr> declaration_list statement_list expression_statement selection_statement iteration_statement jump_statement translation_unit external_declaration function_definition
+
+// %type <ptr>file_input single_stmt funcdef parameters varargslist fpdeflist fpdef fplist fplist1 stmt simple_stmt
+
 
 %start translation_unit
 %%
 
-primary_expression
-	: IDENTIFIER											{$$=add($1);}				
-	| CONSTANT												{$$=add($1);}
-	| STRING_LITERAL										{$$=add($1);}
-	| '(' expression ')'									{$$=$2;}
+	file_input :	single_stmt ENDMARKER{
+		$$ = assign($1);
+		string str = ""
+		emit(getCurrScope(), "","", -1, "HALT");
+		addAttrtoCurrScope("num", 0);
+		removeScope();
+		print_out();
+	}
+	;
+	single_stmt	:	single_stmt NEWLINE {
+		$$ = assign($1);
+	}
 	;
 
-postfix_expression
-	: primary_expression       								{$$=$1;}
-	| postfix_expression '[' expression ']'					{$$=add("postfix_expression", $1, $3);}
-	| postfix_expression '(' ')'							{$$=$1;}
-	| postfix_expression '(' argument_expression_list ')'   {$$=add("postfix_expression", $1, $3);}
-	| postfix_expression '.' IDENTIFIER						{$$=add("postfix_expression.IDENTIFIER", $1, add($3));}
-	| postfix_expression PTR_OP IDENTIFIER					{$$=add($2,$1,add($3));}
-	| postfix_expression INC_OP							    {$$=add($2, $1);}
-	| postfix_expression DEC_OP								{$$=add($2, $1);}
+    funcdef : DEF NAME MarkerScope parameters ':' suite{
+		string str = ""
+		no_op(getCurrScope(), $7->beginlist);
+		no_op(getCurrScope(), $7->endlist);
+		emit(getCurrScope(), "","","", "JUMPRETURN");
+		removeScope();
+		$$ = makenode();
+		$$->type = "FUNCTION";
+		$$->name = $3->name;
+	}
+	;
+///////////////////////////
+
+	parameters : '(' ')' {
+		$$ = assign(NULL);
+	}
+				|'(' varargslist ')'{
+		$$ = assign($2); //////////assignarray 
+	}
 	;
 
-argument_expression_list									
-	: assignment_expression									{$$=$1;}
-	| argument_expression_list ',' assignment_expression    {$$=add("argument_expression_list", $1, $3);}
+	function_call 	: NAME '(' ')' {
+		$$ = makenode();
+		if(!present($1))error();
+		else{
+			string idType = get_attr($1, "type");
+			if(idType == "FUNCTION"){
+				emit(getCurrScope(), "", "", $1->name, "JUMPLABEL");
+				$$->type = get
+			}
+			else error();
+		}
+	}
+						| NAME '(' testlist ')' 
+						;
+
+    varargslist 	:
+    				 fpdef '=' test fpdeflist ','
+    				| fpdef EQUAL test fpdeflist
+    				| fpdef fpdeflist ','
+    				| fpdef fpdeflist
+    ;
+
+	fpdeflist 	:
+					 fpdeflist ',' fpdef
+					| fpdeflist ',' fpdef EQUAL test
 	;
 
-unary_expression
-	: postfix_expression									{$$=$1;}
-	| INC_OP unary_expression								{$$=add($1,$2);}
-	| DEC_OP unary_expression								{$$=add($1,$2);}
-	| unary_operator cast_expression						{$$=add("unary_expression",$1,$2);}
-	| SIZEOF unary_expression								{$$=add($1,$2);}
-	| SIZEOF '(' type_name ')'								{$$=add($1,$3);}
+	fpdef 	: NAME 
+				| '(' fplist ')'
 	;
 
-unary_operator
-	: '&'		{$$=add("&");}
-	| '*'		{$$=add("*");}
-	| '+'		{$$=add("+");}
-	| '-'		{$$=add("-");}
-	| '~'		{$$=add("~");}
-	| '!'		{$$=add("!");}
+	fplist 	: fpdef fplist1 ','
+				| fpdef fplist1	
 	;
 
-cast_expression
-	: unary_expression									   {$$=$1;}
-	| '(' type_name ')' cast_expression                    {$$=add("cast_expression", $2, $4);}
+	fplist1 	:
+				 fplist1 ',' fpdef
 	;
 
-multiplicative_expression
-	: cast_expression									   {$$=$1;}
-	| multiplicative_expression '*' cast_expression        {$$=add("*", $1, $3);}
-	| multiplicative_expression '/' cast_expression        {$$=add("/", $1, $3);}
-	| multiplicative_expression '%' cast_expression        {$$=add("%", $1, $3);}
+	stmt 	: simple_stmt
+				| compound_stmt
 	;
 
-additive_expression
-	: multiplicative_expression								{$$=$1;}
-	| additive_expression '+' multiplicative_expression     {$$=add("+", $1, $3);}
-	| additive_expression '-' multiplicative_expression     {$$=add("-", $1, $3);}
+	simple_stmt 	: small_stmts NEWLINE
+					| small_stmts SEMI NEWLINE
 	;
 
-shift_expression
-	: additive_expression									{$$=$1;}
-	| shift_expression LEFT_OP additive_expression		{$$=add("<<",$1,$3);}
-	| shift_expression RIGHT_OP additive_expression     {$$=add(">>",$1,$3);}
+	small_stmts 	: small_stmts SEMI small_stmt
+					| small_stmt
+	;
+	small_stmt 	: flow_stmt
+					| expr_stmt
+					| print_stmt
+					| pass_stmt
+					| import_stmt
+					| global_stmt
+					| assert_stmt
 	;
 
-relational_expression	
-	: shift_expression										{$$=$1;}
-	| relational_expression '<' shift_expression   {$$=add("<",$1,$3);}
-	| relational_expression '>' shift_expression   {$$=add(">",$1,$3);}
-	| relational_expression LE_OP shift_expression {$$=add("<=",$1,$3);}
-	| relational_expression GE_OP shift_expression {$$=add(">=",$1,$3);}
+	expr_stmt 	: testlist augassign testlist
+					| testlist eqtestlist
+	;
+	eqtestlist 	:
+					 eqtestlist EQUAL testlist
 	;
 
-equality_expression
-	: relational_expression									{$$=$1;}
-	| equality_expression EQ_OP relational_expression       {$$=add("==",$1,$3);}
-	| equality_expression NE_OP relational_expression       {$$=add("!=",$1,$3);}
+	augassign 	: PLUSEQUAL 
+					| MINEQUAL 
+					| STAREQUAL 
+					| SLASHEQUAL 
+					| PERCENTEQUAL 
+					| STARSTAREQUAL 
+					| SLASHSLASHEQUAL 
+	;
+	print_stmt 	:	PRINT
+					|	PRINT testlist
 	;
 
-and_expression
-	: equality_expression									       {$$=$1;}
-	| and_expression '&' equality_expression                       {$$=add("&",$1,$3);}
+	pass_stmt : PASS
 	;
 
-exclusive_or_expression
-	: and_expression											    {$$=$1;}
-	| exclusive_or_expression '^' and_expression			{$$=add("^",$1,$3);}
+	flow_stmt 	: break_stmt
+					| continue_stmt
+					| return_stmt
 	;
-
-inclusive_or_expression
-	: exclusive_or_expression										{$$=$1;}
-	| inclusive_or_expression '|' exclusive_or_expression			{$$=add("|",$1,$3);}
+	break_stmt 	: BREAK
 	;
-
-logical_and_expression
-	: inclusive_or_expression										{$$=$1;}
-	| logical_and_expression AND_OP inclusive_or_expression			{$$=add("&&",$1,$3);}
+	continue_stmt 	: CONTINUE
 	;
-
-logical_or_expression
-	: logical_and_expression										{$$=$1;}
-	| logical_or_expression OR_OP logical_and_expression			{$$=add("||",$1,$3);}
+	return_stmt 	:	RETURN 
+					|	RETURN testlist
 	;
-
-/*check & vs && */
-conditional_expression
-	: logical_or_expression												{$$=$1;}
-	| logical_or_expression '?' expression ':' conditional_expression    {$$=add("conditional_expression",$1,$3,$5);}
+	import_stmt 	:	IMPORT NAME
+					|	IMPORT NAME AS NAME
 	;
-
-assignment_expression
-	: conditional_expression													{$$=$1;}
-	| unary_expression assignment_operator assignment_expression		    {$$=add("assignment_expression",$1,$2,$3);}
+	global_stmt 	: GLOBAL NAME namelist
 	;
-
-assignment_operator
-	: '='				{$$=add("=");}
-	| MUL_ASSIGN		{$$=add("*=");}
-	| DIV_ASSIGN		{$$=add("/=");}
-	| MOD_ASSIGN		{$$=add("%=");}
-	| ADD_ASSIGN		{$$=add("+=");}
-	| SUB_ASSIGN		{$$=add("-=");}
-	| LEFT_ASSIGN		{$$=add("<<=");}
-	| RIGHT_ASSIGN		{$$=add(">>=");}
-	| AND_ASSIGN		{$$=add("&=");}
-	| XOR_ASSIGN		{$$=add("^=");}
-	| OR_ASSIGN		   {$$=add("|=");}
+	namelist 	: 
+					 ',' NAME namelist
 	;
-/*check here for error*/
-expression
-	: assignment_expression										{$$=$1;}
-	| expression ',' assignment_expression						{$$=add("expression",$1,$3);}
+	assert_stmt 	: ASSERT testlist
 	;
-
-constant_expression
-	: conditional_expression								   {$$=$1;}
+	compound_stmt 	: if_stmt
+						| for_stmt
+						| while_stmt
+						| funcdef
+						| classdef
 	;
-
-declaration
-	: declaration_specifiers ';'								{$$=$1;}					
-	| declaration_specifiers init_declarator_list ';'			{$$=add("declaration",$1,$2);}
+	if_stmt 	:	IF test ';' suite elif_list
+				|	IF test ';' suite elif_list ELSE ';' suite
 	;
-
-declaration_specifiers
-	: storage_class_specifier									{$$=$1;}
-	| storage_class_specifier declaration_specifiers			{$$=add("declaration_specifiers",$1,$2);}
-	| type_specifier											{$$=$1;}
-	| type_specifier declaration_specifiers						{$$=add("declaration_specifiers",$1,$2);}
-	| type_qualifier											{$$=$1;}
-	| type_qualifier declaration_specifiers						{$$=add("declaration_specifiers",$1,$2);}
+	elif_list 	:
+					 ELIF test ';' suite elif_list
 	;
-
-init_declarator_list
-	: init_declarator											{$$=$1;}
-	| init_declarator_list ',' init_declarator					{$$=add("init_declarator_list",$1,$3);}	
-	;
-
-init_declarator
-	: declarator											{$$=$1;}
-	| declarator '=' initializer							{$$=add("init_declarator",$1,$3);}
-	;
-
-storage_class_specifier
-	: TYPEDEF												{$$=add($1);}
-	| EXTERN												{$$=add($1);}
-	| STATIC												{$$=add($1);}
-	| AUTO												    {$$=add($1);}
-	| REGISTER												{$$=add($1);}
-	;
-
-type_specifier
-	: VOID												{$$=add($1);}
-	| CHAR												{$$=add($1);}
-	| SHORT												{$$=add($1);}
-	| INT												{$$=add($1);}
-	| LONG												{$$=add($1);}
-	| FLOAT												{$$=add($1);}
-	| DOUBLE										    {$$=add($1);}
-	| SIGNED											{$$=add($1);}
-	| UNSIGNED										    {$$=add($1);}
-	| struct_or_union_specifier							{$$=$1;}
-	| enum_specifier								    {$$=$1;}
-	| TYPE_NAME											{$$=add($1);}
-	;
-
-struct_or_union_specifier
-	: struct_or_union IDENTIFIER '{' struct_declaration_list '}'  {$$=add("struct_or_union_specifier",$1,add($2),$4);}
-	| struct_or_union '{' struct_declaration_list '}'             {$$=add("struct_or_union_specifier",$1,$3);}
-	| struct_or_union IDENTIFIER								  {$$=add("struct_or_union_specifier",$1,add($2));}
-	;
-
-struct_or_union
-	: STRUCT										    {$$=add($1);}
-	| UNION										        {$$=add($1);}
-	;
-
-struct_declaration_list
-	: struct_declaration											{$$=$1;}
-	| struct_declaration_list struct_declaration					{$$=add("struct_declaration_list",$1,$2);}
-	;
-
-struct_declaration
-	: specifier_qualifier_list struct_declarator_list ';'          {$$=add("struct_declaration",$1,$2);}
-	;
-
-specifier_qualifier_list
-	: type_specifier specifier_qualifier_list					{$$=add("specifier_qualifier_list",$1,$2);}
-	| type_specifier											{$$=$1;}
-	| type_qualifier specifier_qualifier_list					{$$=add("specifier_qualifier_list",$1,$2);}
-	| type_qualifier											{$$=$1;}
-	;
-
-struct_declarator_list
-	: struct_declarator											{$$=$1;}
-	| struct_declarator_list ',' struct_declarator				{$$=add("struct_declarator_list",$1,$3);}              
-	;
-
-struct_declarator
-	: declarator											{$$=$1;}
-	| ':' constant_expression								{$$=$2;}
-	| declarator ':' constant_expression					{$$=add("struct_declarator",$1,$3);}
-	;
-
-enum_specifier
-	: ENUM '{' enumerator_list '}'					{$$=add("enum_specifier",add($1),$3);}
-	| ENUM IDENTIFIER '{' enumerator_list '}'	   	{$$=add("enum_specifier",add($1),add($2),$4);}
-	| ENUM IDENTIFIER								{$$=add("enum_specifier",add($1),add($2));}
-	;
-
-enumerator_list
-	: enumerator											{$$=$1;}
-	| enumerator_list ',' enumerator						{$$=add("enumerator_list",$1,$3);}
-	;
-
-enumerator
-	: IDENTIFIER										{$$=add($1);}
-	| IDENTIFIER '=' constant_expression                {$$=add("=",add($1),$3);}
-	;
-
-type_qualifier	
-	: CONST										    {$$=add($1);}
-	| VOLATILE										{$$=add($1);}
-	;
-
-declarator
-	: pointer direct_declarator	               					{$$=add("declarator",$1,$2);}
-	| direct_declarator											{$$=$1;}
-	;
-
-direct_declarator
-	: IDENTIFIER										    	{$$=add($1);}
-	| '(' declarator ')'										{$$=$2;}
-	| direct_declarator '[' constant_expression ']'        		{$$=add("direct_declarator",$1,$3);}
-	| direct_declarator '[' ']'							  		{$$=add("direct_declarator",$1,add("[]"));}
-	| direct_declarator '(' parameter_type_list ')'        		{$$=add("direct_declarator",$1,$3);}
-	| direct_declarator '(' identifier_list ')'       		    {$$=add("direct_declarator",$1,$3);}
-	| direct_declarator '(' ')'									{$$=add("direct_declarator",$1,add("()"));}
-	;
-
-pointer
-	: '*'														{$$=add("*");}
-	| '*' type_qualifier_list									{$$=add("*",$2);}
-	| '*' pointer												{$$=add("*",$2);}
-	| '*' type_qualifier_list pointer		    				{$$=add("*",$2,$3);}
-	;
-
-type_qualifier_list
-	: type_qualifier											{$$=$1;}
-	| type_qualifier_list type_qualifier						{$$=add("type_qualifier_list",$1,$2);}
+	while_stmt 	:	WHILE test ';' suite 
+					|	WHILE test ';' suite ELSE ';' suite
 	;
 
 
-parameter_type_list
-	: parameter_list											{$$=$1;}
-	| parameter_list ',' ELLIPSIS								{$$=add("parameter_type_list",$1,add($3));}
+
+
+	for_stmt 	:	FOR exprlist IN testlist ';' suite{
+		$$ = makenode();
+		$$->nextlist = ($7->endlist).insert(($7->endlist).begin(),($7->nextlist).begin(),  ($7->endlist).end() )
+		emit(getCurrScope(), $6->index, $->index, 1, "");
+		emit(getCurrScope(),"","", $6->quad, "GOTO");
+	}
 	;
 
-parameter_list
-	: parameter_declaration										{$$=$1;}
-	| parameter_list ',' parameter_declaration                 	{$$=add("parameter_list",$1,$3);}
+
+	suite 	: simple_stmt{
+				$$ = assign($1);
+	}
+				| NEWLINE INDENT stmts DEDENT{
+
+				$$ = assign($3);
+				}
 	;
 
-parameter_declaration
-	: declaration_specifiers declarator                 		{$$=add("parameter_declaration",$1,$2);}
-	| declaration_specifiers abstract_declarator                {$$=add("parameter_declaration",$1,$2);}
-	| declaration_specifiers									{$$=$1;}
+	array	: test_expr
+	:
+
+	test_expr 	: or_test{
+				$$ = assign($1);
+
+	}
 	;
 
-identifier_list
-	: IDENTIFIER												{$$=add($1);}
-	| identifier_list ',' IDENTIFIER							{$$=add("identifier_list",$1,add($3));}
+// or_test: and_test ('or' and_test)*
+//or_test(p)
+	or_test 	: and_test{
+						$$ = assign($1);
+
+	}
+				| and_test OR or_test{
+				if($1->type == "BOOLEAN" && $3->type == "BOOLEAN"){
+					$$ = makenode();
+					$$->place = getNewTempVar();
+					$$->type = "BOOLEAN";
+					emit(getCurrScope(), $$->place, $1->place, $3->place, "OR");
+				}
+				else {
+					if($1-> type == "REFERENCE_ERROR" || $3-> type == "REFERENCE_ERROR")error();
+				}
+			}
 	;
 
-type_name
-	: specifier_qualifier_list									{$$=$1;}
-	| specifier_qualifier_list abstract_declarator		 		{$$=add("type_name",$1,$2);}
+	ortestlist 	:
+					 OR and_test ortestlist
 	;
 
-abstract_declarator
-	: pointer													{$$=$1;}
-	| direct_abstract_declarator								{$$=$1;}
-	| pointer direct_abstract_declarator 						{$$=add("abstract_declarator",$1,$2);}
+	and_test 	: not_test {
+						$$ = assign($1);
+	}
+	
+				| not_test AND and_test{
+				if($2->type == "BOOLEAN" ){
+					$$ = makenode();
+					$$->place = getNewTempVar();
+					$$->type = "BOOLEAN";
+					emit(getCurrScope(), $$->place, $1->place, $3->place, "AND");
+				}
+				else {
+					if($1-> type == "REFERENCE_ERROR" || $3-> type == "REFERENCE_ERROR")error();
+				}
+			}
 	;
 
-direct_abstract_declarator
-	: '(' abstract_declarator ')'								{$$=$2;}
-	| '[' ']'													{$$=add("[ ]");}
-	| '[' constant_expression ']'								{$$=$2;}
-	| direct_abstract_declarator '[' ']'						{$$=add("direct_abstract_declarator",$1,add("[]"));}
-	| direct_abstract_declarator '[' constant_expression ']'  	{$$ = add("direct_abstract_declarator", $1, $3);;}
-	| '(' ')'													{$$ = add("( )");}
-	| '(' parameter_type_list ')'								{$$=$2;}
-	| direct_abstract_declarator '(' ')'						{$$=add("direct_abstract_declarator",$1,add("()"));}
-	| direct_abstract_declarator '(' parameter_type_list ')'    {$$=add("direct_abstract_declarator",$1,$3);}
+	andtestlist 	:
+					 AND not_test andtestlist
 	;
 
-initializer
-	: assignment_expression											{$$=$1;}
-	| '{' initializer_list '}'										{$$=$2;}
-	| '{' initializer_list ',' '}'									{$$=add("initializer",$2,add($3));}
+	not_test 	: NOT not_test{
+				if($2->type == "BOOLEAN" ){
+					$$ = makenode();
+					$$->place = getNewTempVar();
+					$$->type = "BOOLEAN";
+					emit(getCurrScope(), $$->place, $1->place, $3->place, "NOT");
+				}
+				else {
+					if($1-> type == "REFERENCE_ERROR" || $3-> type == "REFERENCE_ERROR")error();
+				}
+			}
+					| comparison{
+						$$ = assign($1);
+					}
 	;
 
-initializer_list
-	: initializer											{$$=$1;}
-	| initializer_list ',' initializer						{$$=add("initializer_list",$1,$3);}
+	comparison 	: expr {
+		$$ = assign($1);
+	}
+				| expr comp_op expr{
+				if($2->type == "BOOLEAN" ){
+					$$ = makenode();
+					$$->place = getNewTempVar();
+					$$->type = "BOOLEAN";
+					emit(getCurrScope(), $$->place, $1->place, $3->place, "comp_op");
+				}
+				else {
+					if($1-> type == "REFERENCE_ERROR" || $3-> type == "REFERENCE_ERROR")error();
+				}
+			}
 	;
 
-statement
-	: labeled_statement												{$$=$1;}
-	| compound_statement											{$$=$1;}
-	| expression_statement											{$$=$1;}
-	| selection_statement											{$$=$1;}
-	| iteration_statement											{$$=$1;}
-	| jump_statement												{$$=$1;}
+	compexprlist 	:
+						 comp_op expr compexprlist{
+				if($1->type == "NUMBER" || $1->type == "UNDEFINED"||$1->type == "BOOLEAN" && $3->type == "NUMBER" || $3->type == "UNDEFINED"||$3->type == "BOOLEAN"){
+					$$ = makenode();
+					$$->place = getNewTempVar();
+					$$->type = "BOOLEAN";
+					emit(getCurrScope(), $$->place, $1->place, $3->place, "comp_op");
+				}
+				else {
+					if($1-> type == "REFERENCE_ERROR" || $3-> type == "REFERENCE_ERROR")error();
+				}
+			}
 	;
 
-labeled_statement
-	: IDENTIFIER ':' statement			 		 {$$=add("labeled_statement",add($1),$3);}
-	| CASE constant_expression ':' statement   	 {$$=add("labeled_statement",add("case"),$2,$4);}
-	| DEFAULT ':' statement   			  		 {$$=add("labeled_statement",add("default"),$3);}
+	comp_op 	: LESS	{$$ = assign($1)}
+				| GREATER	{$$ = assign($1)}
+				| EQEQUAL	{$$ = assign($1)}
+				| GREATEREQUAL	{$$ = assign($1)}
+				| LESSEQUAL	{$$ = assign($1)}
+				| NOTEQUAL	{$$ = assign($1)}
 	;
 
-compound_statement
-	: '{' '}'    								{$$=add("{ }");}
-	| '{' statement_list '}'					{$$=add("compound_statement",$2);}
-	| '{' declaration_list '}'					{$$=add("compound_statement",$2);}
-	| '{' declaration_list statement_list '}'   {$$=add("compound_statement",$2,$3);}
+	expr 	: xor_expr{
+		$$ = assign($1);
+	}
+			| xor_expr VBAR expr{
+				if($1->type == "NUMBER" && $3->type == "NUMBER"){
+					$$ = makenode();
+					$$->place = getNewTempVar();
+					$$->type = "NUMBER";
+					emit(getCurrScope(), $$->place, $1->place, $3->place, "VBAR");
+				}
+				else {
+					if($1-> type == "REFERENCE_ERROR" || $3-> type == "REFERENCE_ERROR")error();
+				}
+			}
 	;
 
-declaration_list
-	: declaration											{$$=$1;}
-	| declaration_list declaration                        	{$$=add("declaration_list",$1,$2);}
+	xorexprlist 	:
+						VBAR xor_expr xorexprlist
 	;
 
-statement_list
-	: statement												{$$=$1;}
-	| statement_list statement								{$$=add("statement_list",$1,$2);}
+	xor_expr 	: and_expr{
+		$$ = assign($1);
+	}
+				| and_expr '^' xor_expr{
+				if($1->type == "NUMBER" && $3->type == "NUMBER"){
+					$$ = makenode();
+					$$->place = getNewTempVar();
+					$$->type = "NUMBER";
+					emit(getCurrScope(), $$->place, $1->place, $3->place, "'^'");
+				}
+				else {
+					if($1-> type == "REFERENCE_ERROR" || $3-> type == "REFERENCE_ERROR")error();
+				}
+			}
 	;
 
-expression_statement
-	: ';'														{$$=add(";");}
-	| expression ';'											{$$=$1;}
+	andexprlist 	:
+					 '^' and_expr andexprlist
 	;
 
-selection_statement
-	: IF '(' expression ')' statement               		{$$=add("IF (expr) stmt",$3,$5);}
-	| IF '(' expression ')' statement ELSE statement     	{$$=add("IF (expr) stmt ELSE stmt",$3,$5,$7);}
-	| SWITCH '(' expression ')' statement              	 	{$$=add("SWITCH (expr) stmt",$3,$5);}
+	and_expr 	: shift_expr{
+		$$ = assign($1);
+	}
+				| shift_expr AMPER and_expr{
+				if($1->type == "NUMBER" && $3->type == "NUMBER"){
+					$$ = makenode();
+					$$->place = getNewTempVar();
+					$$->type = "NUMBER";
+					emit(getCurrScope(), $$->place, $1->place, $3->place, "AMPER");
+				}
+				else {
+					if($1-> type == "REFERENCE_ERROR" || $3-> type == "REFERENCE_ERROR")error();
+				}
+			}
 	;
 
-iteration_statement
-	: WHILE '(' expression ')' statement                                        	{$$=add("WHILE (expr) stmt",$3,$5);}
-	| DO statement WHILE '(' expression ')' ';'			                            {$$=add("DO stmt WHILE (expr)",$2,$5);}
-	| FOR '(' expression_statement expression_statement ')' statement               {$$=add("FOR (expr_stmt expr_stmt) stmt",$3,$4,$6);}
-	| FOR '(' expression_statement expression_statement expression ')' statement    {$$=add("FOR (expr_stmt expr_stmt expr) stmt",$3,$4,$5,$7);}
+	shiftexprlist 	:
+						 AMPER shift_expr shiftexprlist
 	;
 
-jump_statement
-	: GOTO IDENTIFIER ';'						{$$=add("jump_statement",add($1),add($2));}
-	| CONTINUE ';'						        {$$=add("continue");}
-	| BREAK ';'						            {$$=add("break");}
-	| RETURN ';'						        {$$=add("return");}
-	| RETURN expression ';'						{$$=add("jump_statement",add("return"),$2);}
+	shift_expr 	: arith_expr {
+		$$$ = assign($1);
+	}
+				| arith_expr LEFTSHIFT shift_expr{
+				if($1->type == "NUMBER" && $3->type == "NUMBER"){
+					$$ = makenode();
+					$$->place = getNewTempVar();
+					$$->type = "NUMBER";
+					emit(getCurrScope(), $$->place, $1->place, $3->place, "LEFTSHIFT");
+				}
+				else {
+					if($1-> type == "REFERENCE_ERROR" || $3-> type == "REFERENCE_ERROR")error();
+				}
+			}
+				| arith_expr RIGHTSHIFT shift_expr{
+				if($1->type == "NUMBER" && $3->type == "NUMBER"){
+					$$ = makenode();
+					$$->place = getNewTempVar();
+					$$->type = "NUMBER";
+					emit(getCurrScope(), $$->place, $1->place, $3->place, "RIGHTSHIFT");
+				}
+				else {
+					if($1-> type == "REFERENCE_ERROR" || $3-> type == "REFERENCE_ERROR")error();
+				}
+			}
 	;
 
-translation_unit
-	: external_declaration										   {$$=$1;}
-	| translation_unit external_declaration                        {$$=add("translation_unit",$1,$2);}
+	arithexprlist 	:
+						 LEFTSHIFT arith_expr arithexprlist
+						| RIGHTSHIFT arith_expr arithexprlist
 	;
 
-external_declaration
-	: function_definition									{$$=$1;}
-	| declaration											{$$=$1;}
+	arith_expr 	:	term{
+		$$ = assign($1);
+	}
+				|	term PLUS arith_expr{
+					$$ = makenode();
+					$$->place = getNewTempVar();
+					$$->type = "NUMBER";
+					emit(getCurrScope(), $$->place, $1->place, $3->place, "PLUS");
+				else {
+					if($1-> type == "REFERENCE_ERROR" || $3-> type == "REFERENCE_ERROR")error();
+				}
+			}
+				|	term MINUS arith_expr{
+					$$ = makenode();
+					$$->place = getNewTempVar();
+					$$->type = "NUMBER";
+					emit(getCurrScope(), $$->place, $1->place, $3->place, "MINUS");
+				else {
+					if($1-> type == "REFERENCE_ERROR" || $3-> type == "REFERENCE_ERROR")error();
+				}
+			}
+
 	;
 
-function_definition
-	: declaration_specifiers declarator declaration_list compound_statement       {$$=add("function_definition",$1,$2,$3,$4);}
-	| declaration_specifiers declarator compound_statement                        {$$=add("function_definition",$1,$2,$3);}
-	| declarator declaration_list compound_statement                              {$$=add("function_definition",$1,$2,$3);}
-	| declarator compound_statement                                               {$$=add("function_definition",$1,$2);}
+	termlist 	:
+					 PLUS term termlist
+					| MINUS term termlist
 	;
+
+	term :	factor{
+		$$ = assign($2);
+	}
+			| factor STAR term{
+				if($1->type == "NUMBER" && $3->type == "NUMBER"){
+					$$ = makenode();
+					$$->place = getNewTempVar();
+					$$->type = "NUMBER";
+					emit(getCurrScope(), $$->place, $1->place, $3->place, "STAR");
+				}
+				else {
+					if($1-> type == "REFERENCE_ERROR" || $3-> type == "REFERENCE_ERROR")error();
+				}
+			}
+			| factor SLASH term{
+				if($1->type == "NUMBER" && $3->type == "NUMBER"){
+					$$ = makenode();
+					$$->place = getNewTempVar();
+					$$->type = "NUMBER";
+					emit(getCurrScope(), $$->place, $1->place, $3->place, "SLASH");
+				}
+				else {
+					if($1-> type == "REFERENCE_ERROR" || $3-> type == "REFERENCE_ERROR")error();
+				}
+			}
+			| factor PERCENT term{
+				if($1->type == "NUMBER" && $3->type == "NUMBER"){
+					$$ = makenode();
+					$$->place = getNewTempVar();
+					$$->type = "NUMBER";
+					emit(getCurrScope(), $$->place, $1->place, $3->place, "PERCENT");
+				}
+				else {
+					if($1-> type == "REFERENCE_ERROR" || $3-> type == "REFERENCE_ERROR")error();
+				}
+			}
+			
+	;
+
+	factorlist 	:
+					 STAR factor factorlist
+					| SLASH factor factorlist
+					| PERCENT factor factorlist
+					| SLASHSLASH factor factorlist
+	;
+
+	factor 	: power{
+		$$ = assign($1);
+	}
+				| PLUS factor{
+					if($2->type != "NUMBER")error();
+					$$ = makenode();
+					$$->place = getNewTempVar();
+					$$->type = "NUMBER";
+					emit(getCurrScope(), $$->place, 0, $2->place, "-");
+				}
+				| MINUS factor
+	;
+
+	power 	: atom{
+		$$ = assign($1);
+	}
+				| atom LSQB STARSTAR RSQB{
+					if($3 -> type != "NUMBER"){
+						error();
+					}
+					else{
+						if($1 -> isId){
+							error();
+						}
+						$$ = makenode();
+						$$->type = $1->type;
+						int wid = getWid($1->type);
+						int baseAddr = 100;//getBaseAddr(getCurrScope(), $1->name);
+						index = getNewTempVar();
+						emit(getCurrScope(), index, $3->place, "", "=");
+						relAddr = getNewTempVar();
+						emit(getCurrScope(), relAddr, index, wid, "*");
+						absAddr = getNewTempVar();
+						emit(getCurrScope(), absAddr, baseAddr, relAddr, "+" );
+						val = getNewTempVar();
+						emit(getCurrScope(), val, absAddr, "", "LW");
+						$$->place = val;
+						$$->absAddr = absAddr;
+						$$->isArray = TRUE;
+						$$->name = $1->name;
+
+					}
+				}
+	;
+	trailerlist 	: 
+					 trailer trailerlist
+	;
+
+	atom 	: '(' ')'{
+		$$ = makenode();
+	}
+				| '(' testlist_comp ')'{
+					$$ = assign($2);
+				}
+				| LSQB RSQB{
+					$$ = makenode();
+					$$->place = empty_array();
+					$$->type = "NUMBER";
+				}
+				| LSQB listmaker RSQB{
+					$$ = assign($2);
+					$$->isList = TRUE;
+					$$->name = getNewTempVar();
+					add_Id($$->name, $$->type);
+					add_attr($$->name, "place", $$->place);
+					add_attr($$->name, "isArray", "True");
+					emit(getCurrScope(), $$->name, $$->place, 'ARRAY', '=');
+				}
+				| STRING{
+
+					$$ = makenode();
+					$$->place = assign($1);
+					$$->type = "STRING";
+				}
+				| LBRACE dictorsetmaker RBRACE
+				| BACKQUOTE testlist1 BACKQUOTE
+				| NAME{
+					$$ = makenode();
+					if(present($1)){
+						$$->name = $1;
+						$$->type = get_attr($1, type);
+					}
+				}
+				| NUMBER{
+
+					$$ = makenode();
+					$$->type = "NUMBER";
+					name = getNewTempVar();
+					add_Id(name, 'NUMBER');
+					lvl = get_attr(name,'scopeLevel' );
+					offset = get_attr(name, 'offset');
+					$$->place = getNewTempVar((level, offset), name);
+					emit(getCurrScope(), $$->place, $1,"", "=i" );
+				}
+				| FNUMBER{
+					
+					$$ = makenode();
+					$$->place = assign($1);
+					$$->type = "NUMBER";
+				}
+				| stringlist
+	;
+
+	stringlist 	: STRING 
+					| STRING stringlist
+					| TRIPLESTRING
+					| TRIPLESTRING stringlist
+	;
+
+	listmaker 	: testlist{
+	$$ = makenode();
+	$$->place = makearray($1 ->place);
+	$$->type = makearray($1 ->type);
+	}
+				| test ',' listmaker{
+					if($3->type != $1->type) error();
+					else{
+						$$->place = makearray($1->place).insert($3->place);
+						$$->type = $1->type;
+					}
+				}
+	;
+	
+	trailer 	: '(' ')'
+				| '(' arglist ')'
+				| LSQB subscriptlist RSQB
+				| DOT NAME
+	;
+
+	subscriptlist 	: subscript
+						| subscript ','
+						| subscript ',' subscriptlist
+	;
+
+	subscript 	: DOT DOT DOT
+					| test
+					| test ';' test sliceop
+					| ';' test sliceop
+					| test ';' sliceop
+					| test ';' test
+					| test ';'
+					| ';' test
+					| ';' sliceop
+					| ';'
+	;
+
+	sliceop 	: ';'
+				| ';' test
+	;
+
+	exprlist 	: expr
+					| expr ','
+					| expr ',' exprlist
+	;
+
+	testlist 	: test
+					| test ','
+					| test ',' testlist
+	;
+
+	dictorsetmaker 	: test';'list
+						| testlist
+	;
+
+	test';'list 	: test ';' test
+						| test ';' test ','
+						| test ';' test ',' test';'list
+	;
+
+	classdef 	: CLASS NAME ';' suite
+					| CLASS NAME '(' ')' ';' suite
+					| CLASS NAME '(' testlist ')' ';' suite
+	;
+
+	arglist 	: argument
+				| argument ','
+				| argument ',' arglist
+	;
+	argument 	: test
+					| test EQUAL test
+	;
+	testlist_comp 	: test{
+		$$ = makearray($1);
+	}
+					| test ',' testlist_comp{
+						$$ = makearray($1).insert($2);
+					}
+	;
+
+	testlist 	: test{
+		$$ = makearray($1);
+	}
+					| test ',' testlist{
+						$$ = makearray($1).insert($2);
+					}
+	;
+
+	stmts 	: stmt stmts {
+		$$ = makenode();
+		$$ -> beginlist.insert(($$->beginlist).end(), ($1->beginlist).begin(), ($2->beginlist).end());
+		$$ -> endlist.insert(($$->endlist).end(), ($1->endlist).begin(), ($2->endlist).end());
+	}
+				| stmt Marker{
+		$$ = makenode();
+		$$ -> beginlist.insert(($$->beginlist).end(), ($1->beginlist).begin(), ($2->beginlist).end());
+		$$ -> endlist.insert(($$->endlist).end(), ($1->endlist).begin(), ($2->endlist).end());
+	}
+	;
+
+
+
 
 %%
 #include <stdio.h>
